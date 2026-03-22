@@ -1,1 +1,240 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schnellangebot – Kallwaß</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f0f0f; color: #e8e0d0; font-family: -apple-system, system-ui, sans-serif; min-height: 100vh; padding: 24px 16px; }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    .label { font-size: 11px; letter-spacing: 0.15em; color: #B8963E; text-transform: uppercase; margin-bottom: 8px; }
+    h1 { font-size: 26px; font-weight: 600; color: #e8e0d0; }
+    .sub { color: #888; font-size: 14px; margin-top: 6px; margin-bottom: 28px; }
+    textarea {
+      width: 100%; min-height: 110px; background: #1a1a1a; border: 1px solid #2a2a2a;
+      border-radius: 12px; padding: 14px 16px; color: #e8e0d0; font-size: 15px;
+      resize: vertical; outline: none; line-height: 1.5; font-family: inherit;
+    }
+    textarea:focus { border-color: #B8963E; }
+    .hint { font-size: 12px; color: #555; margin-top: 6px; margin-bottom: 12px; }
+    button.primary {
+      width: 100%; padding: 14px; background: #B8963E; color: #0f0f0f;
+      border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
+      cursor: pointer; margin-bottom: 28px; transition: opacity 0.2s;
+    }
+    button.primary:disabled { background: #2a2a2a; color: #555; cursor: not-allowed; }
+    .error { background: #2a1010; border: 1px solid #5a2020; border-radius: 12px; padding: 16px; margin-bottom: 24px; color: #ff8080; }
+    .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; overflow: hidden; }
+    .card-head { padding: 20px 24px; border-bottom: 1px solid #2a2a2a; display: flex; justify-content: space-between; align-items: center; }
+    .card-head .meta { font-size: 11px; color: #B8963E; letter-spacing: 0.1em; text-transform: uppercase; }
+    .card-head .date { font-size: 13px; color: #666; margin-top: 2px; }
+    button.copy { background: #2a2a2a; border: 1px solid #333; border-radius: 8px; padding: 8px 14px; color: #aaa; font-size: 13px; cursor: pointer; }
+    .pos { padding: 12px 24px; display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #1f1f1f; }
+    .pos-name { font-size: 14px; color: #e8e0d0; }
+    .pos-notiz { font-size: 12px; color: #666; margin-top: 2px; }
+    .pos-preis { font-size: 14px; color: #B8963E; font-weight: 500; white-space: nowrap; padding-left: 16px; }
+    .total { padding: 16px 24px; border-top: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }
+    .total-label { font-size: 15px; font-weight: 600; }
+    .total-preis { font-size: 22px; font-weight: 700; color: #B8963E; }
+    .hinweis { padding: 12px 24px; border-top: 1px solid #1f1f1f; font-size: 13px; color: #666; font-style: italic; }
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #555; border-top-color: #B8963E; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="label">Bestattungshaus Kallwaß</div>
+  <h1>Schnellangebot</h1>
+  <p class="sub">Beschreibe die gewünschte Bestattung – das Angebot wird automatisch erstellt.</p>
 
+  <textarea id="input" placeholder="z.B. Bundle MS Altefähr mit Natursarg, Abholung aus dem Krankenhaus, Rednerin Günther, Kühlung"></textarea>
+  <p class="hint">Tipp: Mikrofon-Taste auf der Tastatur nutzen und einfach sprechen</p>
+  <button class="primary" id="btn" onclick="generate()">Angebot erstellen</button>
+
+  <div id="error" class="error" style="display:none"></div>
+  <div id="result"></div>
+</div>
+
+<script>
+const PRODUCTS = [
+  { id: 445, name: "See MS Altefähr", typ: "Bundle", preis: 7398.25 },
+  { id: 461, name: "Erde Kath. Friedhof", typ: "Bundle", preis: 7826.89 },
+  { id: 459, name: "Erde Stralsund", typ: "Bundle", preis: 8743.55 },
+  { id: 454, name: "FriedWald", typ: "Bundle", preis: 7690.46 },
+  { id: 455, name: "RuheForst", typ: "Bundle", preis: 6913.15 },
+  { id: 443, name: "Urne Kath. Friedhof", typ: "Bundle", preis: 5954.27 },
+  { id: 416, name: "Urne nach Außerhalb", typ: "Bundle", preis: 3846.28 },
+  { id: 372, name: "Urne Ordnungsamt Stralsund", typ: "Bundle", preis: 533.61 },
+  { id: 624, name: "Urne See sozial", typ: "Bundle", preis: 602.93 },
+  { id: 359, name: "Urne Stralsund", typ: "Bundle", preis: 16516.55 },
+  { id: 362, name: "Urne Stralsund sozial", typ: "Bundle", preis: 2244.40 },
+  { id: 412, name: "Urne Velgast Kirche", typ: "Bundle", preis: 6822.18 },
+  { id: 417, name: "Urne von Außerhalb", typ: "Bundle", preis: 12417.92 },
+  { id: 444, name: "See Sassnitz", typ: "Bundle", preis: 6900.35 },
+  { id: 373, name: "Urne Niepars", typ: "Bundle", preis: 13990.17 },
+  { id: 374, name: "Urne Prohn", typ: "Bundle", preis: 8755.71 },
+  { id: 375, name: "Urne Groß Mohrdorf", typ: "Bundle", preis: 7818.03 },
+  { id: 377, name: "Urne Steinhagen", typ: "Bundle", preis: 12169.84 },
+  { id: 376, name: "Urne NF Velgast", typ: "Bundle", preis: 7273.45 },
+  { id: 410, name: "Urne Voigdehagen", typ: "Bundle", preis: 7098.03 },
+  { id: 460, name: "Erde Prohn", typ: "Bundle", preis: 4995.84 },
+  { id: 468, name: "Erde Groß Mohrdorf", typ: "Bundle", preis: 7496.97 },
+  { id: 2, name: "Überführung aus dem Helios Hanseklinikum", typ: "Dienstleistung", preis: 146.22 },
+  { id: 7, name: "Überführung von zu Hause am Tage", typ: "Dienstleistung", preis: 146.22 },
+  { id: 8, name: "Überführung von zu Hause außerhalb Arbeitszeit", typ: "Dienstleistung", preis: 180.67 },
+  { id: 479, name: "Überführung aus Helios außerhalb Arbeitszeit", typ: "Dienstleistung", preis: 180.67 },
+  { id: 9, name: "Überführung der Urne und Blumen zum Friedhof", typ: "Dienstleistung", preis: 126.05 },
+  { id: 10, name: "Überführung des Sarges", typ: "Dienstleistung", preis: 126.05 },
+  { id: 476, name: "Überführung der Urne zum Schiff", typ: "Dienstleistung", preis: 79.83 },
+  { id: 1, name: "Überführung nach Greifswald Krematorium", typ: "Dienstleistung", preis: 155.46 },
+  { id: 12, name: "Hygienische Versorgung, Einkleiden, Einbetten", typ: "Dienstleistung", preis: 100.84 },
+  { id: 11, name: "Hygienische Versorgung, eigene Kleidung", typ: "Dienstleistung", preis: 117.65 },
+  { id: 19, name: "Kühlung", typ: "Dienstleistung", preis: 70.59 },
+  { id: 30, name: "Träger zur Erdbestattung", typ: "Dienstleistung", preis: 243.70 },
+  { id: 31, name: "Träger zur Trauerfeier am Sarg", typ: "Dienstleistung", preis: 243.70 },
+  { id: 29, name: "Träger zur Urnenbeisetzung", typ: "Dienstleistung", preis: 63.03 },
+  { id: 33, name: "Gruftherstellung für Erdbestattung", typ: "Dienstleistung", preis: 588.24 },
+  { id: 32, name: "Gruftherstellung für Urnenbeisetzung", typ: "Dienstleistung", preis: 134.45 },
+  { id: 15, name: "Verabschiedung", typ: "Dienstleistung", preis: 92.44 },
+  { id: 21, name: "Vorbereitung und Begleitung der Trauerfeier", typ: "Dienstleistung", preis: 71.43 },
+  { id: 20, name: "Vorbereitung und Begleitung Trauerfeier und Seebestattung", typ: "Dienstleistung", preis: 92.44 },
+  { id: 22, name: "Dekoration in der Kapelle", typ: "Dienstleistung", preis: 75.63 },
+  { id: 23, name: "Dekoration in der Kirche", typ: "Dienstleistung", preis: 75.63 },
+  { id: 24, name: "Dekoration auf dem Schiff", typ: "Dienstleistung", preis: 75.63 },
+  { id: 25, name: "Dekoration in der Feierhalle", typ: "Dienstleistung", preis: 75.63 },
+  { id: 41, name: "Rednerin Frau Günther", typ: "Auslage", preis: 497.42 },
+  { id: 40, name: "Rednerin Frau Melahn", typ: "Auslage", preis: 390.00 },
+  { id: 39, name: "Rednerin Frau Priebe", typ: "Auslage", preis: 545.00 },
+  { id: 872, name: "Rednerin Kathrin Relitz", typ: "Auslage", preis: 380.00 },
+  { id: 43, name: "Redner Herr Kalz", typ: "Auslage", preis: 353.00 },
+  { id: 42, name: "Redner Herr Zühlke", typ: "Auslage", preis: 400.00 },
+  { id: 84, name: "Todesbescheinigung", typ: "Auslage", preis: 250.00 },
+  { id: 93, name: "MS Altefähr bis 50 Angehörige", typ: "Auslage", preis: 575.00 },
+  { id: 94, name: "MS Altefähr 51-80 Angehörige", typ: "Auslage", preis: 675.00 },
+  { id: 95, name: "MS Altefähr ohne Angehörige", typ: "Auslage", preis: 416.50 },
+  { id: 97, name: "MS Alexander", typ: "Auslage", preis: 1000.00 },
+  { id: 629, name: "MS Hanseat Boddenrederei Rügen", typ: "Auslage", preis: 1176.47 },
+  { id: 86, name: "Krematorium Greifswald", typ: "Auslage", preis: 332.83 },
+  { id: 188, name: "Kiefernsarg Natur", typ: "Sarg", preis: 384.87 },
+  { id: 199, name: "Kiefernsarg VB K1", typ: "Sarg", preis: 883.74 },
+  { id: 198, name: "Kiefernsarg G1", typ: "Sarg", preis: 1340.23 },
+  { id: 204, name: "Kiefernsarg B2", typ: "Sarg", preis: 1723.41 },
+  { id: 193, name: "Kiefernsarg LG 320", typ: "Sarg", preis: 2052.61 },
+  { id: 205, name: "Bio Franka Esche (Natursarg)", typ: "Sarg", preis: 1959.31 },
+  { id: 195, name: "Wildkirsche Viola", typ: "Sarg", preis: 1959.31 },
+  { id: 203, name: "Lupo Wildeiche", typ: "Sarg", preis: 2072.82 },
+  { id: 208, name: "Eichensarg Florenza", typ: "Sarg", preis: 2372.48 },
+  { id: 707, name: "Tannensarg", typ: "Sarg", preis: 1260.50 },
+  { id: 27, name: "Danksagungskarten", typ: "Einzel", preis: 2.52 },
+  { id: 80, name: "Sterbeurkunde", typ: "Auslage", preis: 15.00 },
+  { id: 81, name: "Geburtsurkunde", typ: "Auslage", preis: 15.00 },
+  { id: 82, name: "Eheurkunde", typ: "Auslage", preis: 15.00 },
+];
+
+const SYSTEM_PROMPT = `Du bist ein Angebotsassistent für das Bestattungshaus Kallwaß in Stralsund. 
+Wähle passende Produkte aus der Preisliste basierend auf der Beschreibung.
+
+Antworte NUR mit reinem JSON ohne Markdown oder Erklärungen:
+{"positionen":[{"id":123,"name":"Produktname","preis":1234.56,"menge":1,"notiz":"optional"}],"hinweis":"Kurze Anmerkung"}
+
+Regeln:
+- Nur Produkte aus der Preisliste verwenden
+- Natursarg = Bio Franka Esche
+- Rednerin Günther = Rednerin Frau Günther
+- MS Altefähr = passende Schiffsvariante je nach Angehörigen
+- Bei Seebestattung: Vorbereitung und Begleitung Trauerfeier und Seebestattung hinzufügen`;
+
+async function generate() {
+  const input = document.getElementById("input").value.trim();
+  if (!input) return;
+
+  const btn = document.getElementById("btn");
+  const errorDiv = document.getElementById("error");
+  const result = document.getElementById("result");
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Angebot wird erstellt…';
+  errorDiv.style.display = "none";
+  result.innerHTML = "";
+
+  const produktliste = PRODUCTS.map(p => `${p.name} | ${p.typ} | ${p.preis.toFixed(2)}€`).join("\n");
+
+  try {
+    const response = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        system: SYSTEM_PROMPT + "\n\nProduktliste:\n" + produktliste,
+        messages: [{ role: "user", content: input }],
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data?.error?.message || `API Fehler ${response.status}`);
+    }
+
+    const text = data.content?.[0]?.text || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Kein gültiges Angebot erhalten");
+    const angebot = JSON.parse(jsonMatch[0]);
+
+    renderAngebot(angebot);
+  } catch (e) {
+    errorDiv.textContent = "Fehler: " + e.message;
+    errorDiv.style.display = "block";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Angebot erstellen";
+  }
+}
+
+function fmt(n) { return n.toFixed(2).replace(".", ",") + " €"; }
+
+function renderAngebot(angebot) {
+  const gesamt = angebot.positionen.reduce((s, p) => s + p.preis * (p.menge || 1), 0);
+  const datum = new Date().toLocaleDateString("de-DE");
+
+  const rows = angebot.positionen.map(p => `
+    <div class="pos">
+      <div>
+        <div class="pos-name">${p.name}${p.menge > 1 ? ` <span style="color:#666;font-size:12px">×${p.menge}</span>` : ""}</div>
+        ${p.notiz ? `<div class="pos-notiz">${p.notiz}</div>` : ""}
+      </div>
+      <div class="pos-preis">${fmt(p.preis * (p.menge || 1))}</div>
+    </div>
+  `).join("");
+
+  const copyText = angebot.positionen.map(p =>
+    `${p.name}${p.menge > 1 ? ` ×${p.menge}` : ""}: ${fmt(p.preis * (p.menge || 1))}`
+  ).join("\n") + `\n\nGesamt: ${fmt(gesamt)}`;
+
+  document.getElementById("result").innerHTML = `
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <div class="meta">Angebot</div>
+          <div class="date">${datum}</div>
+        </div>
+        <button class="copy" onclick="navigator.clipboard.writeText(\`${copyText.replace(/`/g, "\\`")}\`)">Kopieren</button>
+      </div>
+      ${rows}
+      <div class="total">
+        <div class="total-label">Gesamt</div>
+        <div class="total-preis">${fmt(gesamt)}</div>
+      </div>
+      ${angebot.hinweis ? `<div class="hinweis">${angebot.hinweis}</div>` : ""}
+    </div>
+  `;
+}
+
+document.getElementById("input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.metaKey) generate();
+});
+</script>
+</body>
+</html>
